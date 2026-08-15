@@ -55,7 +55,7 @@ Session metadata, incidents, and reports are stored in `data/exam_proctoring.sql
 ### 1. Clone and set up Python
 
 ```bash
-git clone https://github.com/AarambhDevHub/exam-cheating-detection.git
+git clone https://github.com/anmol110923/exam-cheating-detection.git
 cd exam-cheating-detection
 
 python3 -m venv .venv
