@@ -1,7 +1,11 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true
-};
+  reactStrictMode: true,
+  webpack: (config, { isServer }) => {
+    config.externals.push('canvas', 'jsdom')
+    return config
+  },
+}
 
-export default nextConfig;
+export default nextConfig

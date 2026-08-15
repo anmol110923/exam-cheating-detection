@@ -17,15 +17,19 @@ export default function SessionPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([api.getSession(sessionId), api.getStatus(sessionId), api.listIncidents(sessionId)])
       .then(([sessionData, statusData, incidentsData]) => {
         setSession(sessionData);
         setStatus(statusData);
         setIncidents(incidentsData);
+        setError(null);
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message || "Unable to load session data"))
+      .finally(() => setLoading(false));
   }, [sessionId]);
 
   useEffect(() => {
@@ -62,76 +66,113 @@ export default function SessionPage() {
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted">{session?.candidate_id}</p>
-          <h1 className="text-2xl font-semibold">{session?.candidate_name ?? "Session"}</h1>
-          <p className="text-sm text-muted">{session?.exam_name ?? session?.exam_id}</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="rounded-md bg-success px-4 py-2 text-sm font-medium text-white" onClick={start}>
-            Start
-          </button>
-          <button className="rounded-md bg-danger px-4 py-2 text-sm font-medium text-white" onClick={stop}>
-            Stop
-          </button>
-          <Link className="rounded-md border border-line bg-white px-4 py-2 text-sm font-medium" href={`/sessions/${sessionId}/report`}>
-            Report
-          </Link>
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.3)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-sky-300">Session</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">{session?.candidate_name ?? "Session"}</h1>
+            <p className="mt-2 text-sm text-slate-300">{session?.candidate_id ?? "Candidate details unavailable"}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-emerald-400" onClick={start} type="button">
+              Start
+            </button>
+            <button className="rounded-lg bg-red-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-400" onClick={stop} type="button">
+              Stop
+            </button>
+            <Link className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:border-slate-600 hover:text-white" href={`/sessions/${sessionId}/report`}>
+              Report
+            </Link>
+          </div>
         </div>
       </div>
 
-      {error ? <p className="rounded-md border border-danger bg-white p-4 text-danger">{error}</p> : null}
-      {runtimeError ? <p className="rounded-md border border-danger bg-white p-4 text-danger">{runtimeError}</p> : null}
+      {error ? (
+        <div className="rounded-2xl border border-red-500/30 bg-slate-900/80 p-5">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-red-300">Session error</p>
+          <h2 className="mt-2 text-xl font-semibold text-white">Unable to load session</h2>
+          <p className="mt-2 text-sm text-slate-300">{error}</p>
+        </div>
+      ) : null}
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Metric label="Session" value={session?.status ?? "loading"} />
-        <Metric label="Events" value={connected ? "connected" : "offline"} />
-        <Metric label="Face" value={status?.face_present ? "present" : "absent"} />
-        <Metric label="Violations" value={String(violationIncidents.length)} />
-      </div>
+      {runtimeError ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
+          {runtimeError}
+        </div>
+      ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-lg border border-line bg-white p-5">
-          <h2 className="text-lg font-semibold">Detection Status</h2>
+      {loading && !error ? (
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div className="h-28 animate-pulse rounded-2xl border border-slate-800 bg-slate-900/60" key={idx} />
+          ))}
+        </div>
+      ) : null}
+
+      {!loading || !!session ? (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Metric label="Session" value={session?.status ?? "loading"} />
+          <Metric label="Events" value={connected ? "connected" : "offline"} />
+          <Metric label="Face" value={status?.face_present ? "present" : "absent"} />
+          <Metric label="Violations" value={String(violationIncidents.length)} />
+        </div>
+      ) : null}
+
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr]">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Monitoring Status</h2>
+            <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-sky-200">
+              Active
+            </span>
+          </div>
           <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+            <StatusRow label="Exam" value={session?.exam_name ?? session?.exam_id ?? "unknown"} />
             <StatusRow label="Gaze" value={status?.gaze_direction ?? "unknown"} />
             <StatusRow label="Eye ratio" value={status ? status.eye_ratio.toFixed(3) : "unknown"} />
             <StatusRow label="Mouth" value={status?.mouth_moving ? "moving" : "still"} />
             <StatusRow label="Multiple faces" value={status?.multiple_faces ? "yes" : "no"} />
             <StatusRow label="Objects" value={status?.objects_detected ? "detected" : "clear"} />
             <StatusRow label="Updated" value={status ? new Date(status.timestamp).toLocaleTimeString() : "unknown"} />
+            <StatusRow label="Connection" value={connected ? "Live" : "Offline"} />
           </div>
         </div>
 
-        <div className="rounded-lg border border-line bg-white p-5">
-          <h2 className="text-lg font-semibold">Latest Violation</h2>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <h2 className="text-lg font-semibold text-white">Latest Violation</h2>
           {latestIncident ? (
-            <div className="mt-4 text-sm">
-              <p className="font-medium text-danger">{latestIncident.type}</p>
-              <p className="text-muted">{new Date(latestIncident.timestamp).toLocaleString()}</p>
-              <p className="mt-2">Severity {latestIncident.severity}</p>
+            <div className="mt-4 space-y-3 text-sm">
+              <p className="inline-flex rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs font-medium uppercase tracking-[0.18em] text-red-300">
+                {latestIncident.type}
+              </p>
+              <p className="text-slate-300">{new Date(latestIncident.timestamp).toLocaleString()}</p>
+              <p className="text-slate-200">Severity {latestIncident.severity}</p>
             </div>
           ) : (
-            <p className="mt-4 text-sm text-muted">No violations yet.</p>
+            <p className="mt-4 text-sm text-slate-300">No violations yet.</p>
           )}
         </div>
       </div>
 
-      <div className="rounded-lg border border-line bg-white">
-        <div className="border-b border-line px-5 py-4">
-          <h2 className="text-lg font-semibold">Violation Timeline</h2>
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60">
+        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+          <h2 className="text-lg font-semibold text-white">Violation Timeline</h2>
+          <span className="text-xs uppercase tracking-[0.18em] text-slate-400">{violationIncidents.length} events</span>
         </div>
-        <div className="divide-y divide-line">
-          {violationIncidents.map((incident) => (
-            <div className="grid gap-1 px-5 py-4 text-sm" key={incident.id}>
-              <div className="flex justify-between gap-3">
-                <span className="font-medium">{incident.type}</span>
-                <span className="text-muted">{new Date(incident.timestamp).toLocaleString()}</span>
+        <div className="divide-y divide-slate-800">
+          {violationIncidents.length > 0 ? (
+            violationIncidents.map((incident) => (
+              <div className="grid gap-2 px-5 py-4 text-sm text-slate-200" key={incident.id}>
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-medium text-white">{incident.type}</span>
+                  <span className="text-slate-300">{new Date(incident.timestamp).toLocaleString()}</span>
+                </div>
+                <span className="text-slate-300">Status: {incident.status}</span>
               </div>
-              <span className="text-muted">Status: {incident.status}</span>
-            </div>
-          ))}
+            ))
+          ) : (
+            <div className="px-5 py-6 text-sm text-slate-300">No violation events have been recorded yet.</div>
+          )}
         </div>
       </div>
     </section>
@@ -140,18 +181,18 @@ export default function SessionPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-line bg-white p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 text-xl font-semibold">{value}</p>
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <p className="text-sm text-slate-300">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-white">{value}</p>
     </div>
   );
 }
 
 function StatusRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-md bg-surface px-3 py-2">
-      <span className="text-muted">{label}</span>
-      <span className="font-medium">{value}</span>
+    <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2.5 text-sm">
+      <span className="text-slate-300">{label}</span>
+      <span className="font-medium text-white">{value}</span>
     </div>
   );
 }
