@@ -215,7 +215,3 @@ Contributions are welcome! Please open an issue or pull request for improvements
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
-
-## Support
-
-If you find this project helpful, consider [buying me a coffee](https://buymeacoffee.com/aarambhdevhub).
